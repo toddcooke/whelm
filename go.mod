@@ -1,4 +1,4 @@
-module tweb
+module whelm
 
 go 1.23.0
 

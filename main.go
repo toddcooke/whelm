@@ -318,12 +318,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.response = HTTPResponse(msg)
 		m.state = stateViewResponse
 
-		// Format response content
-		content := fmt.Sprintf("Status: %d %s\n\nHeaders:\n", m.response.StatusCode, m.response.Status)
-		for k, v := range m.response.Headers {
-			content += fmt.Sprintf("%s: %s\n", k, v)
+		// Format response content to include request details
+		content := fmt.Sprintf("Request:\n%s %s\n\n",
+			lipgloss.NewStyle().Bold(true).Render(m.currentRequest.Method),
+			m.currentRequest.URL)
+
+		// Add request headers
+		if len(m.currentRequest.Headers) > 0 {
+			content += "Request Headers:\n"
+			for k, v := range m.currentRequest.Headers {
+				content += fmt.Sprintf("%s: %s\n", k, v)
+			}
+			content += "\n"
 		}
-		content += "\nBody:\n" + m.response.Body
+
+		// Add request body if present
+		if m.currentRequest.Body != "" {
+			content += "Request Body:\n"
+			content += m.currentRequest.Body
+			content += "\n\n"
+		}
+
+		// Add response details
+		content += fmt.Sprintf("Response Status: %d %s\n\n", m.response.StatusCode, m.response.Status)
+
+		if len(m.response.Headers) > 0 {
+			content += "Response Headers:\n"
+			for k, v := range m.response.Headers {
+				content += fmt.Sprintf("%s: %s\n", k, v)
+			}
+			content += "\n"
+		}
+
+		content += "Response Body:\n" + m.response.Body
 
 		m.responseView.SetContent(content)
 		return m, nil
