@@ -48,6 +48,7 @@ var (
 	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	urlInputStyle     = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("63"))
 	headerStyle       = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("99"))
+	focusedInputStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("205"))
 )
 
 // HTTPRequest represents an HTTP request
@@ -472,18 +473,30 @@ func (m model) View() string {
 
 		// URL input
 		s += "  URL:\n"
-		s += urlInputStyle.Render(m.urlInput.View()) + "\n\n"
+		if m.urlInput.Focused() {
+			s += focusedInputStyle.Render(m.urlInput.View()) + "\n\n"
+		} else {
+			s += urlInputStyle.Render(m.urlInput.View()) + "\n\n"
+		}
 
 		// Method selection
 		s += "  " + m.methodList.View() + "\n\n"
 
 		// Headers
 		s += headerStyle.Render("  Headers:") + "\n"
-		s += m.headerInput.View() + "\n\n"
+		if m.headerInput.Focused() {
+			s += focusedInputStyle.Render(m.headerInput.View()) + "\n\n"
+		} else {
+			s += m.headerInput.View() + "\n\n"
+		}
 
 		// Body
 		s += headerStyle.Render("  Body:") + "\n"
-		s += m.bodyInput.View() + "\n\n"
+		if m.bodyInput.Focused() {
+			s += focusedInputStyle.Render(m.bodyInput.View()) + "\n\n"
+		} else {
+			s += m.bodyInput.View() + "\n\n"
+		}
 
 		s += helpStyle.Render("  ctrl+n/tab: Next field • ctrl+s: Send • alt+s: Save • esc: Back\n")
 
@@ -502,7 +515,11 @@ func (m model) View() string {
 		s := titleStyle.Render("Save Request")
 		s += "\n\n"
 		s += "  Name:\n"
-		s += urlInputStyle.Render(m.nameInput.View()) + "\n\n"
+		if m.nameInput.Focused() {
+			s += focusedInputStyle.Render(m.nameInput.View()) + "\n\n"
+		} else {
+			s += urlInputStyle.Render(m.nameInput.View()) + "\n\n"
+		}
 		s += helpStyle.Render("  enter: Save • esc: Cancel\n")
 
 		return s
