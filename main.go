@@ -187,6 +187,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle tab navigation specially to ensure it works correctly
+		if m.state == stateEditRequest && (msg.String() == "ctrl+n" || msg.Type == tea.KeyCtrlN || msg.String() == "tab" || msg.Type == tea.KeyTab) {
+			// If tab is pressed, handle field navigation directly instead of passing to component
+			if m.urlInput.Focused() {
+				// Navigate from URL to Method List
+				m.urlInput.Blur()
+				m.methodList.Select(indexOf(m.currentRequest.Method, httpMethods))
+				return m, nil
+			} else if !m.urlInput.Focused() && !m.headerInput.Focused() && !m.bodyInput.Focused() {
+				// Method list is "focused" (no actual focus, but we're on this field)
+				m.currentRequest.Method = httpMethods[m.methodList.Index()]
+				m.headerInput.Focus()
+				return m, textarea.Blink
+			} else if m.headerInput.Focused() {
+				// Navigate from Headers to Body
+				m.headerInput.Blur()
+				m.bodyInput.Focus()
+				return m, textarea.Blink
+			} else if m.bodyInput.Focused() {
+				// Navigate from Body back to URL
+				m.bodyInput.Blur()
+				m.urlInput.Focus()
+				return m, textinput.Blink
+			}
+		}
+
 		switch m.state {
 		case stateMain:
 			switch msg.String() {
@@ -214,26 +240,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.state = stateMain
 				return m, nil
-			case "tab":
-				if m.urlInput.Focused() {
-					m.urlInput.Blur()
-					m.methodList.Select(indexOf(m.currentRequest.Method, httpMethods))
-					return m, nil
-				} else if m.methodList.Index() >= 0 {
-					m.currentRequest.Method = httpMethods[m.methodList.Index()]
-					m.headerInput.Focus()
-					return m, nil
-				} else if m.headerInput.Focused() {
-					m.headerInput.Blur()
-					m.bodyInput.Focus()
-					return m, nil
-				} else if m.bodyInput.Focused() {
-					m.bodyInput.Blur()
-					m.urlInput.Focus()
-					return m, nil
-				}
 			case "enter":
-				if m.methodList.Index() >= 0 {
+				// Enter key when method list is active (nothing else is focused)
+				if !m.urlInput.Focused() && !m.headerInput.Focused() && !m.bodyInput.Focused() {
 					m.currentRequest.Method = httpMethods[m.methodList.Index()]
 					m.headerInput.Focus()
 					return m, nil
@@ -349,27 +358,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle component updates
 	switch m.state {
 	case stateEditRequest:
+		// Skip component updates for navigation keys to avoid them being consumed by the components
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			// Don't pass Tab or Ctrl+N to components to prevent them from capturing these keys
+			if keyMsg.String() == "ctrl+n" || keyMsg.Type == tea.KeyCtrlN || keyMsg.String() == "tab" || keyMsg.Type == tea.KeyTab {
+				return m, nil
+			}
+		}
+
+		// Only update the component that is currently focused
 		if m.urlInput.Focused() {
 			m.urlInput, cmd = m.urlInput.Update(msg)
 			m.currentRequest.URL = m.urlInput.Value()
 			cmds = append(cmds, cmd)
-		}
-
-		if m.bodyInput.Focused() {
+		} else if m.bodyInput.Focused() {
+			// Handle component update but intercept tab key
+			if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.Type == tea.KeyTab {
+				// Handled above, don't pass to textarea
+				return m, nil
+			}
 			m.bodyInput, cmd = m.bodyInput.Update(msg)
 			m.currentRequest.Body = m.bodyInput.Value()
 			cmds = append(cmds, cmd)
-		}
-
-		if m.headerInput.Focused() {
+		} else if m.headerInput.Focused() {
+			// Handle component update but intercept tab key
+			if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.Type == tea.KeyTab {
+				// Handled above, don't pass to textarea
+				return m, nil
+			}
 			m.headerInput, cmd = m.headerInput.Update(msg)
 			// Parse headers
 			m.currentRequest.Headers = parseHeaders(m.headerInput.Value())
 			cmds = append(cmds, cmd)
+		} else {
+			// Only update the method list if no other input is focused
+			m.methodList, cmd = m.methodList.Update(msg)
+			cmds = append(cmds, cmd)
 		}
-
-		m.methodList, cmd = m.methodList.Update(msg)
-		cmds = append(cmds, cmd)
 
 	case stateSaveRequest:
 		m.nameInput, cmd = m.nameInput.Update(msg)
@@ -433,7 +458,7 @@ func (m model) View() string {
 		s += headerStyle.Render("  Body:") + "\n"
 		s += m.bodyInput.View() + "\n\n"
 
-		s += helpStyle.Render("  tab: Next field • ctrl+s: Send • alt+s: Save • esc: Back\n")
+		s += helpStyle.Render("  ctrl+n/tab: Next field • ctrl+s: Send • alt+s: Save • esc: Back\n")
 
 		return s
 
