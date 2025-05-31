@@ -47,7 +47,7 @@ var (
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	urlInputStyle     = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("63"))
-	headerStyle       = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("99"))
+	headerStyle       = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("0")).Underline(false)
 	focusedInputStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("205"))
 )
 
@@ -180,6 +180,10 @@ func (m model) Init() tea.Cmd {
 		textinput.Blink,
 		textarea.Blink,
 	)
+}
+
+func isListFocused(m model) bool {
+	return !m.urlInput.Focused() && !m.headerInput.Focused() && !m.bodyInput.Focused()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -480,7 +484,11 @@ func (m model) View() string {
 		}
 
 		// Method selection
-		s += "  " + m.methodList.View() + "\n\n"
+		if isListFocused(m) {
+			s += focusedInputStyle.Render(m.methodList.View()) + "\n\n"
+		} else {
+			s += m.methodList.View() + "\n\n"
+		}
 
 		// Headers
 		s += headerStyle.Render("  Headers:") + "\n"
